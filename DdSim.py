@@ -13,7 +13,11 @@ __status__ = "Development"
 #       DEPENDENCIES
 #
 
-import simuPOP
+try:
+    import simuPOP
+except:
+    print "WARNING: No simulation can be run until simuPOP is installed"
+
 import matplotlib
 matplotlib.use('Agg')
 
@@ -378,20 +382,22 @@ def plotDd(X, Y):
             if source_Pop != sink_Pop:
                 label = label_pattern.format(source_Pop + 1, sink_Pop + 1)
                 legend.append(label)
+                tmpY = data[source_Pop][sink_Pop]
+                tmpY[np.isnan(tmpY)] = 1
                 axes[source_Pop < nPop / 2].plot(
-                    X, data[source_Pop][sink_Pop],
+                    X, tmpY,
                     markers[sink_Pop],
                     color=colors[source_Pop],
                     label=label)
                 axes[not(source_Pop < nPop / 2)].plot(
-                    X, data[source_Pop][sink_Pop],
+                    X, tmpY,
                     markers[sink_Pop],
                     color=colors[source_Pop],
                     label=label,
                     alpha=0.15)
 
     for ax in axes:
-        ax.set_ylim(top=1.001)
+        ax.set_ylim((0, 1.1))
         ax.legend(legend, loc='best', ncol=nPop)
 
     fig.tight_layout()
@@ -484,7 +490,8 @@ def VMP_f(pop1, pop2):
     normalized.
     """
     pool = np.sqrt(pop1 * pop2)
-    gamma = pool.sum()
+    gamma = pool.sum(axis=-1)
+    gamma = gamma.reshape(gamma.shape + (1,))
     return pool / gamma
 
 
