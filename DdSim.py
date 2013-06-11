@@ -13,17 +13,24 @@ __status__ = "Development"
 #       DEPENDENCIES
 #
 
+#SIMULATION
 try:
     import simuPOP
 except:
     print "WARNING: No simulation can be run until simuPOP is installed"
 
+#PLOTTING
 import matplotlib
 matplotlib.use('Agg')
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.pyplot as plt
 
+#DATA
 import numpy as np
 from scipy.stats import pearsonr
-import matplotlib.pyplot as plt
+from scipy.interpolate import spline
+
+#UTILS
 import time
 import string
 
@@ -145,7 +152,7 @@ def writeCSV(fpath, Y, generation=-1):
     fh.close()
 
 
-def writeMigrate(fpath, Y, generation=-1):
+def writeMigrate(fpath, pop):
     """Writes the simulated results (Y) for one generation in
     migrate-n compatible format.
 
@@ -154,45 +161,37 @@ def writeMigrate(fpath, Y, generation=-1):
     ** fpath    Path to output-file. If file exists at path it
                 will be overwritten without promptin question
 
-    ** Y        A numpy array containing the allel frequencies,
-                the second value in the return tuple of makeNParray
-
-    ** generation
-                (Default value -1), specifice which generation's
-                results to output. Negative numbers refers to
-                positions for last, -1 being the last generation.
-
+    ** pop      The population object as returned from the simulation
     """
-    generations, nPop, nAlleles = Y.shape
-    print "Generation {0} ({1}), Populations {2}, Alleles {3}".format(
-        generation, generations, nPop, nAlleles)
-
-    loci = Y.shape[-2]
+    nPop = len(pop.subPopSizes())
+    nLoci = len(pop.individual(0).genotype(0))
     title = "simuPOP simulation {0}".format(time.ctime(time.time()))
 
     fh = open(fpath, 'w')
 
-    fh.write("{0} {1} . {2}\n".format(nPop, loci, title))
+    fh.write("{0}\t{1}\t.  {2}\n".format(nPop, nLoci, title))
 
-    popheader = "{0} Population{1}\n"
+    popheader = "{0}\tPopulation{1}\n"
     a_entry = "{0}{1}\t{2}\n"
-    zpos = len(str(nAlleles + 1))
+    locus_entry = "{0}.{1}"
 
     #HERE SHOULD ITERATE OVER LOCI....
 
-    loc = 1
     for popI in range(nPop):
 
         #GET POP NAME AS A, B, C etc
-        pop = string.uppercase[popI]
+        popName = string.uppercase[popI]
+        #GET POP SIZE
+        popSize = pop.subPopSize(popI)
 
         #WRITE POPULATION HEADER
-        fh.write(popheader.format(nAlleles, pop))
+        fh.write(popheader.format(popSize, popName))
 
-        #WRITE ALL ALLELES
-        for alleleI in range(nAlleles):
-            fh.write(a_entry.format(pop, str(alleleI + 1).zfill(zpos),
-                                    Y[generation, popI, loc, alleleI]))
+        for i, ind in enumerate(pop.individuals(popI)):
+            fh.write(a_entry.format(
+                popName, i,
+                "\t".join([locus_entry.format(a, b) for a, b in
+                           zip(ind.genotype(0), ind.genotype(1))])))
 
     fh.close()
 
@@ -403,6 +402,222 @@ def plotDd(X, Y):
     fig.tight_layout()
     return fig
 
+
+def plotHistograms(data, startPos=0, bins=10, label="{0} -> {1}",
+                   smooth=False, subplots=True):
+    """
+    Plots a composite graph of superimposed histograms.
+
+    :param data:
+        A 3D array with the first dimension describing the source
+        population, the second the target population and the third
+        the experiment iteration.
+    :param startPos:
+        The index of the thrid dimension for where to start presenting
+        the data.
+    """
+
+    fig = plt.figure()
+    XX = []
+    YY = []
+    Labels = []
+    Colors = [
+        (142, 56, 142),
+        (113, 113, 198),
+        (125, 158, 192),
+        (56, 142, 142),
+        (113, 198, 113),
+        (142, 142, 56),
+        (197, 193, 170),
+        (198, 113, 113),
+        (85, 85, 85),
+        (170, 170, 170)]
+
+    Axes = []
+    pltOnAx = []
+
+    if subplots:
+        for source in range(data.shape[0]):
+            Axes.append(fig.add_subplot(
+                1, data.shape[0], source + 1,
+                sharey=(len(Axes) > 0 and Axes[0] or None)))
+
+    else:
+        Axes.append(fig.gca())
+
+    for source in range(data.shape[0]):
+
+        if subplots:
+            ax = Axes[source]
+        else:
+            ax = Axes[0]
+
+        for target in range(data.shape[1]):
+
+            if source != target:
+                tmpD = data[source, target, :]
+                Y, X = np.histogram(tmpD[np.isfinite(tmpD)])
+                XX.append(X)
+                YY.append(Y)
+                Labels.append(label.format(source + 1, target + 1))
+                pltOnAx.append(ax)
+
+    minX = (min([x.min() for x in XX]), )
+    maxX = (max([x.max() for x in XX]), )
+    #maxY = max([y.max() for y in YY])
+
+    zeroY = (0, )
+
+    for i in range(len(XX)):
+
+        X = XX[i]
+        Y = YY[i]
+
+        X = (X[1:] + X[:-1]) / 2.0
+
+        X = np.r_[minX, X, maxX]
+        Y = np.r_[zeroY, Y, zeroY]
+
+        if smooth:
+
+            vX = X
+            X = np.linspace(X.min(), X.max(), bins * 100)
+            Y = spline(vX, Y, X, order=10)
+
+        c = [v / 256.0 for v in Colors[i % len(Colors)]]
+
+        pltOnAx[i].plot(X, Y, '-', color=c, label=Labels[i])
+        pltOnAx[i].fill_between(X, Y, 0, color=c, alpha=0.4)
+
+    for ax in Axes:
+        ax.legend(ncol=(subplots and 1 or 2), prop={'size': 'x-small'})
+        ax.set_xlim(minX[0], maxX[0])
+        cl = plt.getp(ax, 'xmajorticklabels')
+        plt.setp(cl, fontsize='x-small')
+
+    fig.tight_layout()
+
+    return fig
+
+
+def plotBoxes(data, startPos=0):
+    """
+    Plots a composite graph of boxplots and heatmap for data.
+
+    :param data:
+        A 3D array with the first dimension describing the source
+        population, the second the target population and the third
+        the experiment iteration.
+    :param startPos:
+        The index of the thrid dimension for where to start presenting
+        the data.
+    """
+    subSize = 0.8
+    xOff = 0.165
+    yOff = 0.135
+    W = 1 - xOff - 0.1  # 0.11
+    H = 1 - yOff - 0.1  # 0.105
+
+    #SETTING UP AXES
+    fig = plt.figure()
+    nPop = data.shape[1]
+    if nPop != 4:
+        raise Exception("Not implemented for other than 4 pops")
+
+    majorAx = plt.gca()
+    majorAx.set_xlim(0, nPop)
+    majorAx.set_ylim(0, nPop)
+    #majorAx = AA.Axes(fig, [0, 0, nPop + 1, nPop + 1])
+    majorAx.set_ylabel("Source Population")
+    majorAx.set_yticks([.5, 1.5, 2.45, 3.4])
+    majorAx.set_yticklabels(['4', '3', '2', '1'])
+    majorAx.set_xlabel("Target Population")
+    majorAx.set_xticks([.6, 1.55, 2.5, 3.45])
+    majorAx.set_xticklabels(['1', '2', '3', '4'])
+    fig.add_axes(majorAx)
+    axes = []
+    divVal = float(nPop)
+    for target in range(nPop)[::-1]:
+        for source in range(nPop):
+            ax = plt.axes(
+                [xOff + W * (source / divVal),
+                 yOff + H * (target / divVal),
+                 W * subSize / divVal, H * subSize / divVal])
+            fig.add_axes(ax)
+            axes.append(ax)
+
+    #axes = [fig.add_subplot(nPop, nPop, i + 1) for i in range(nPop ** 2)]
+    #data = get_Dd(Y)
+
+    heatMapVals = []
+    plotI = 0
+    for sourcePop in range(nPop):
+        heatRow = []
+        for targetPop in range(nPop):
+
+            if sourcePop != targetPop:
+
+                tmpD = data[sourcePop][targetPop][startPos:]
+                tmpCleanD = tmpD[np.isfinite(tmpD)]
+                if tmpCleanD.size == 0:
+                    r = plt.Rectangle((0, 0), 1, 1)
+                    r.set_facecolor('white')
+                    axes[plotI].add_patch(r)
+                    axes[plotI].set_axis_off()
+                    tmpMean = np.nan
+                else:
+                    axes[plotI].boxplot(tmpCleanD)
+                    axes[plotI].set_ylim(0, 1.0)
+                    axes[plotI].set_xticklabels([])
+                    tl = plt.getp(axes[plotI], 'ymajorticklabels')
+                    plt.setp(tl, fontsize='x-small')
+                    """
+                    axes[plotI].set_xticklabels(["{0} -> {1}".format(
+                        sourcePop + 1, targetPop + 1)])
+                    """
+                    tmpMean = tmpCleanD.mean()
+
+            else:
+                tmpMean = np.nan
+                if plotI > 0:
+                    r = plt.Rectangle((0, 0), 1, 1)
+                    r.set_facecolor('grey')
+                    axes[plotI].add_patch(r)
+                    axes[plotI].set_axis_off()
+
+            print "{0} -> {1}: {2}".format(
+                sourcePop + 1, targetPop + 1, tmpMean)
+            heatRow.append(tmpMean)
+            plotI += 1
+
+        heatMapVals.append(heatRow)
+
+    heatVals = np.array(heatMapVals)
+    imax = axes[0].imshow(heatVals, interpolation='nearest', cmap=plt.cm.RdBu,
+                          vmin=0, vmax=1)
+    il = plt.getp(imax.axes, 'ymajorticklabels')
+    plt.setp(il, fontsize='x-small')
+    il = plt.getp(imax.axes, 'xmajorticklabels')
+    plt.setp(il, fontsize='x-small')
+    divider = make_axes_locatable(axes[0])
+    cax = divider.append_axes("right", "5%", pad="3%")
+    cb = plt.colorbar(imax, cax=cax)
+    cb.set_ticks([0, 0.5, 1])
+    cb.set_ticklabels(['0', '.5', '1'])
+    cl = plt.getp(cb.ax, 'ymajorticklabels')
+    plt.setp(cl, fontsize='x-small')
+
+    axes[0].set_axis_on()
+    axes[0].set_yticks(np.arange(nPop))
+    axes[0].set_xticks(np.arange(nPop))
+    axes[0].set_xticklabels(np.arange(nPop) + 1)
+    axes[0].set_yticklabels(np.arange(nPop) + 1)
+    #axes[0].set_ylabel("Source")
+    #axes[0].set_xlabel("Target")
+
+    #fig.tight_layout()
+
+    return fig
 #
 #       POPULATION GENETICS FUNCTIONS
 #
@@ -546,6 +761,10 @@ def get_Dd(Y, generation=None, D=get_D, **kwargs):
 
     Returns a Dd numpy array
     """
+
+    if not hasattr(Y, 'shape'):
+        Y = np.array(Y)
+
     nPop = Y.shape[1]
     #comparisons = (nPop - 1) * nPop / 2
 
@@ -827,6 +1046,46 @@ def simuMigration(subPopSizes, migrationMatrix, generations, nAlleles,
     return pop
 
 
+def runMultiRunStoreFinalMig(nSimulations, evalF=get_Dd, **kwargs):
+    """Helper function to repeat the same simulation and extract
+    final migration pattern at last generation.
+
+    Arguments:
+
+    ** nSimulations
+            Integer determining the number of repeats
+
+    Further arguments and keyword arguments are passed along
+    to simuMigration, some of these such as 'fpath' and
+    'nAlleles' are used by evalSimuSettings as well.
+
+    Returns a list of pearson correlation r's for each iteration
+    """
+    if not 'fpath' in kwargs:
+        print "Don't know where you are saving, cant do anything"
+        return
+    if not 'nAlleles' in kwargs:
+        print "Don't know the number of alleles, cant do a thing"
+        return
+
+    fpath = kwargs['fpath']
+    nAlleles = kwargs['nAlleles']
+    data = []
+
+    for i in range(nSimulations):
+        print "STARTING", i
+        simuMigration(**kwargs)
+        X, Y, Z = makeNParray(fpath, nAlleles)
+        M = evalF(Y, generation=-1)
+        data.append(M)
+        print "DONE WITH", i
+
+    D = np.array(data)
+    D = D.ravel().reshape(D.shape[1:] + (D.shape[0], ), order='F')
+
+    return D
+
+
 def evalSimuSettings(nSimulations, *args, **kwargs):
     """Helper function to repeat the same simulation and extract
     correlation between the observed and expected migration.
@@ -895,20 +1154,23 @@ def metaEvalSimu(iterations=1000, fpath='pop.data'):
     """
     global migrationMatrix
     global migrationMatrix2
+    """
     constant_kwargs = {'mutationRates': 0.0001, 'simulationStep': 1,
                        'pre_migration_generations': 500,
                        'fpath': fpath}
-
+    """
     def makeHist(pstats, i, title, fpath, iterations):
         """Method outputs the data as npy file and histogram svg"""
         P = np.array(pstats)
         np.save("{0}.{1}.sim{2}.npy".format(fpath, iterations, i), P)
+        P = P[np.isfinite(P)]
         plt.clf()
         plt.hist(P, bins=100)
         plt.gca().set_title("Sim {0} (N={1}): {2}".format(i, iterations, title))
         plt.tight_layout()
         plt.savefig('{0}.{1}.sim{2}.svg'.format(fpath, iterations, i))
 
+    """
     pstats = evalSimuSettings(iterations,
                               subPopSizes=1000,
                               migrationMatrix=migrationMatrix,
@@ -949,6 +1211,7 @@ def metaEvalSimu(iterations=1000, fpath='pop.data'):
 
     makeHist(pstats, 3, '5000 individiuals per subpop', fpath, iterations)
 
+
     pstats = evalSimuSettings(iterations,
                               subPopSizes=1000,
                               migrationMatrix=migrationMatrix,
@@ -971,13 +1234,45 @@ def metaEvalSimu(iterations=1000, fpath='pop.data'):
 
     pstats = evalSimuSettings(iterations,
                               subPopSizes=1000,
+                              migrationMatrix=migrationMatrix3,
+                              generations=1000,
+                              nAlleles=256,
+                              loci=[4],
+                              **constant_kwargs)
+
+    makeHist(pstats, 6, 'Second migration pattern', fpath, iterations)
+
+    pstats = evalSimuSettings(iterations,
+                              subPopSizes=1000,
                               migrationMatrix=migrationMatrix,
                               generations=1000,
                               nAlleles=128,
                               loci=[4],
                               **constant_kwargs)
 
-    makeHist(pstats, 5, '128 Possible alleles per loci', fpath, iterations)
+    makeHist(pstats, 7, '128 Possible alleles per loci', fpath, iterations)
+
+    pstats = evalSimuSettings(iterations,
+                              subPopSizes=10000,
+                              migrationMatrix=migrationMatrix2,
+                              generations=10000,
+                              nAlleles=32,
+                              loci=[4],
+                              **constant_kwargs)
+
+    makeHist(pstats, 8, 'Stronger Migration, 32 Possible alleles per loci, 10000 generations, 10000 individuals / pop', fpath, iterations)
+
+    pstats = evalSimuSettings(iterations,
+                              subPopSizes=1000,
+                              migrationMatrix=migrationMatrix2,
+                              generations=10000,
+                              nAlleles=32,
+                              loci=[4],
+                              **constant_kwargs)
+
+    makeHist(pstats, 9, 'Stronger Migration, 32 alleles, 4 loci, 10000 gen, 1000 individuals', fpath, iterations)
+    """
+
 
 #
 #       MIGRATION MATRICES
@@ -992,6 +1287,12 @@ migrationMatrix = np.array(
     [0, 0, 0, 0]])
 
 migrationMatrix2 = migrationMatrix * 5
+
+migrationMatrix3 = np.array(
+    [[0, .0002, .0001, 0],
+    [0, 0, .0002, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0]])
 
 #
 #       RUN-TIME BEHAVIOUR
