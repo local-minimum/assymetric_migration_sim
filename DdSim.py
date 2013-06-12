@@ -20,8 +20,8 @@ except:
     print "WARNING: No simulation can be run until simuPOP is installed"
 
 #PLOTTING
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
 
@@ -81,6 +81,9 @@ class Fake_File(object):
         The string will be considered a line for the purpose of iteration.
         If this is not true, consider using read() followed by splitting on
         newline.
+
+        :param line:
+            A line to be written
         """
         self._data.append(line)
 
@@ -89,8 +92,11 @@ class Fake_File(object):
         This disregards the emulated rows and returns a single string.
         The string can be split on "\n" to get lines back, given that
         writing was done with explicit line-breaks.
+
+        :return:
+            The entire contents of the data-stor as a string
         """
-        return "".join(map(str, self._data))
+        return "\n".join(map(str, self._data))
 
     def __iter__(self):
         """To simulate the iteration described in the init-docstring.
@@ -121,16 +127,18 @@ def writeCSV(fpath, Y, generation=-1):
     """Writes the simulation results (Y) for one generation as a
     comma separated vector file.
 
-    ** fpath    Path to output-file. If file exists at path it
-                will be overwritten without promptin question
+    :param fpath:
+        Path to output-file. If file exists at path it
+        will be overwritten without promptin question
 
-    ** Y        A numpy array containing the allel frequencies,
-                the second value in the return tuple of makeNParray
+    :param Y:
+        A numpy array containing the allel frequencies,
+        the second value in the return tuple of makeNParray
 
-    ** generation
-                (Default value -1), specifice which generation's
-                results to output. Negative numbers refers to
-                positions for last, -1 being the last generation.
+    :param generation:
+        (Default value -1), specifice which generation's
+        results to output. Negative numbers refers to
+        positions for last, -1 being the last generation.
     """
 
     A = Y[generation, ...]
@@ -158,10 +166,12 @@ def writeMigrate(fpath, pop):
 
     NOTE: This only currently works for one locus simulations.
 
-    ** fpath    Path to output-file. If file exists at path it
-                will be overwritten without promptin question
+    :param fpath:
+        Path to output-file. If file exists at path it
+        will be overwritten without promptin question
 
-    ** pop      The population object as returned from the simulation
+    :param pop:
+        The population object as returned from the simulation
     """
     nPop = len(pop.subPopSizes())
     nLoci = len(pop.individual(0).genotype(0))
@@ -197,7 +207,11 @@ def writeMigrate(fpath, pop):
 
 
 def print_M(M):
-    """Outputs M in simple to read format to stdout"""
+    """Outputs M in simple to read format to stdout
+
+    :param M:
+        A 2D migration array
+    """
     for row in M:
         for val in row:
             print "{0:.2f}\t".format(val),
@@ -215,24 +229,22 @@ def print_M(M):
 def makeNParray(fpath, alleles):
     """makeNParray takes two arguments and returns three arrays
 
-    ** fpath    A path to the file containing the simulation
-                information, or an instance of Fake_File contiannign
-                a simulation.
+    :param fpath:
+        A path to the file containing the simulation
+        information, or an instance of Fake_File contiannign
+        a simulation.
 
-    ** alleles  The number of alleles possible per loci as specified
-                when executing the simulation.
+    :param alleles:
+        The number of alleles possible per loci as specified
+        when executing the simulation.
 
-    Outputs:
+    :return X, Y, Z:
 
-    ** X        A numpy 1D array which contains the generations
-                (1, 2, ... N)
-
-    ** Y        A 4D numpy array with allele frequencies.
-                Axis specifying:
-                (generation, population, locus, allel).
-
-    ** Z        A 2D numpy array with population sizes, axis being:
-                (generation, population)
+        X - A numpy 1D array which contains the generations (1, 2, ... N)
+        Y - A 4D numpy array with allele frequencies. Axis specifying:
+            (generation, population, locus, allel)
+        Z - A 2D numpy array with population sizes, axis being:
+            (generation, population)
     """
     if isinstance(fpath, Fake_File):
         fh = fpath
@@ -278,9 +290,12 @@ def plotTop10(X, Y):
     In total 10 subplots are generated.
     If more than one locus in simulation, then top alleles per loci is drawn.
 
-    Arguments X and Y are numpy arrays as returned by makeNParray
-
-    Returns a matplotlib figure.
+    :param X:
+        Numpy array for X-axis
+    :param Y:
+        Numpy array for the different Y-datas
+    :return:
+        Matplotlib.Figure
     """
     loci = Y.shape[-2]
     graph_per_loci = int(10 / loci)
@@ -309,8 +324,8 @@ def plotTop10(X, Y):
     return fig
 
 
-def plotGeneralPopInfo(
-        X, Y, Z, step=10, shift_square_threshold=0.0001):
+def plotGeneralPopInfo(X, Y, Z, step=10,
+                       shift_square_threshold=0.0001):
     """Plots general information about the populations, such as
     how many alleles are present in each and how many of those
     still have significant movement over time at each generation.
@@ -319,14 +334,18 @@ def plotGeneralPopInfo(
     generation. This may fluctuate somewhat even when populations
     are kept stable as migration happens after mating.
 
-    Arguments X, Y and Z are numpy arrays as returned by makeNParray.
-
-    ** step     The delta generations for investigating moving
-                allele frequencies.
-
-    ** shift_square_threshold
-                The threshold for reporting an allele as moving.
-    Returns a matplotlib figure.
+    :param X:
+        Numpy array as returned from makeNParray
+    :param Y:
+        Numpy array as returned from makeNParray
+    :param Z:
+        Numpy array as returned from makeNParray
+    :param step:
+        The delta generations for investigating moving allele frequenciesself.
+    :param shift_square_threshold:
+        The threshold for reporting an allele as moving.
+    :return:
+        Matplotlib.Figure
     """
 
     delta = (Y[step:] - Y[:-step]) ** 2
@@ -359,9 +378,12 @@ def plotDd(X, Y):
     The same data is plotted twice, but half is made transparent
     in each subplot.
 
-    Arguments X and Y are numpy arrays as returned by makeNParray.
-
-    Returns a matplotlib figure.
+    :param X:
+        The X as returned from makeNParray
+    :param Y:
+        The Y as returned from makeNParray
+    :return:
+        Matplotlib.Figure
     """
 
     data = get_Dd(Y)
@@ -415,6 +437,19 @@ def plotHistograms(data, startPos=0, bins=10, label="{0} -> {1}",
     :param startPos:
         The index of the thrid dimension for where to start presenting
         the data.
+    :param bins:
+        A bins argument to Numpy.histogram, either an int for the number
+        of bins for each series, a tuple for the bounds or a list of
+        specific bin boundries. See Numpy.histogram for more info.
+    :param label:
+        A string pattern to put as legend label. \{0\} will be replaced
+        with a source integer starting at 1, and \{1\} target int.
+    :param smooth:
+        If histogram line should be smoothened (BETA/Works poorly)
+    :param subplots:
+        If figure should have subplots (one per source in dataset)
+    :return:
+        Matplotlib.Figure
     """
 
     fig = plt.figure()
@@ -464,7 +499,7 @@ def plotHistograms(data, startPos=0, bins=10, label="{0} -> {1}",
 
     minX = (min([x.min() for x in XX]), )
     maxX = (max([x.max() for x in XX]), )
-    #maxY = max([y.max() for y in YY])
+    maxY = max([y.max() for y in YY])
 
     zeroY = (0, )
 
@@ -492,6 +527,7 @@ def plotHistograms(data, startPos=0, bins=10, label="{0} -> {1}",
     for ax in Axes:
         ax.legend(ncol=(subplots and 1 or 2), prop={'size': 'x-small'})
         ax.set_xlim(minX[0], maxX[0])
+        ax.set_ylim(0, maxY)
         cl = plt.getp(ax, 'xmajorticklabels')
         plt.setp(cl, fontsize='x-small')
 
@@ -511,6 +547,8 @@ def plotBoxes(data, startPos=0):
     :param startPos:
         The index of the thrid dimension for where to start presenting
         the data.
+    :return:
+        Matplotlib.Figure
     """
     subSize = 0.8
     xOff = 0.165
@@ -631,11 +669,10 @@ def _get_vps(v):
     Note: Not the full equation 2 and as implemented takes serveral
     vectors in parallel when dealing with several loci.
 
-    Arguments:
-
-    ** v    A numpy-array with allele frequencies
-
-    Returns a scalar per locus in a numpy array.
+    :param v:
+        A numpy-array with allele frequencies
+    :return:
+        A scalar per locus in a numpy array.
     """
 
     return (v ** 2).sum(axis=-1)
@@ -644,11 +681,10 @@ def _get_vps(v):
 def _hmean(v):
     """Calculates harmonic mean
 
-    Arguments:
-
-    ** v    A numpy array with loci as last dimension.
-
-    Returns the harmonic mean of several loci's D.
+    :param v:
+        A numpy array with loci as last dimension.
+    :return:
+        The harmonic mean of several loci's D.
     """
     return v.shape[-1] / (1 / v).sum(axis=-1)
 
@@ -657,22 +693,20 @@ def get_D(Y, pop1, pop2, generation=None):
     """Equation 4c, calculates Jost's D on vector-like allele arrays.
     Note that this implimentation works for several loci in parallell.
 
-    Arguments:
-
-    ** Y    Numpy array Y as returned from makeNParray
-
-    ** pop1 An int specifying the first population
-
-    ** pop2 Either a number specifying the second population or
-            A numpy array such that it has the information
-            on the second population.
-
-    ** generation
-            (Default None), if specified, D will be returned for the
-            specified generation(s), else it will be returned for all
-            generations.
-
-    Returns a numpy array holding D per locus
+    :param Y:
+        Numpy.array Y as returned from makeNParray
+    :param pop1:
+        An int specifying the first population
+    :param pop2:
+        Either a number specifying the second population or
+        A numpy array such that it has the information
+        on the second population.
+    :param generation:
+        (Default None), if specified, D will be returned for the
+        specified generation(s), else it will be returned for all
+        generations.
+    :return:
+        A Numpy.array holding D per locus
     """
 
     if generation is None:
@@ -695,14 +729,12 @@ def VMP_f(pop1, pop2):
     This function should only be used as an argmuent to
     get_Virual_Migrant_Pool
 
-    Arguments:
-
-    ** pop1 A numpy array of allele frequencies
-
-    ** pop2 A numpy array of allele frequencies
-
-    Returns the geometric mean of the composing populations
-    normalized.
+    :param pop1:
+        A Numpy.array of allele frequencies
+    :param pop2:
+        A Numpy.array of allele frequencies
+    :return:
+        The geometric mean of the composing populations normalized.
     """
     pool = np.sqrt(pop1 * pop2)
     gamma = pool.sum(axis=-1)
@@ -715,23 +747,21 @@ def get_Virual_Migrant_Pool(Y, pop1, pop2, generation=None,
     """Common interface for obtaining the Virtual Migrant Pool (VMP)
     independent on which f-function used.
 
-    Arguments:
-
-    ** Y    A numpy array as returned by makeNParray
-
-    ** pop1 An integer specifying population 1
-
-    ** pop2 An integer specifying population 2
-
-    ** generation
-            (Default None). If specified, VMP will be constructed
-            for the specific generation(s), else it will be
-            constructed for all generations.
-
-    ** f    (Default VMP_f) A VMP construction fucntion. It should share interface
-            with the method VMP_f
-
-    Returns a numpy array representing the VMP
+    :param Y:
+        A numpy array as returned by makeNParray
+    :param pop1:
+        An integer specifying population 1
+    :param pop2:
+        An integer specifying population 2
+    :param generation:
+        (Default None). If specified, VMP will be constructed
+        for the specific generation(s), else it will be
+        constructed for all generations.
+    :param f:
+        (Default VMP_f) A VMP construction fucntion. It should share interface
+        with the method VMP_f
+    :return:
+        A numpy array representing the VMP
     """
     if generation is None:
         generation = np.s_[:]
@@ -745,21 +775,19 @@ def get_Virual_Migrant_Pool(Y, pop1, pop2, generation=None,
 def get_Dd(Y, generation=None, D=get_D, **kwargs):
     """Generates a Directional D matrix as default.
 
-    Arguments:
-
-    ** Y    A numpy array as returned by makeNParray
-
-    ** generation
-            (Default None). If specified, Dd will be constructed
-            for the specific generation(s), else it will be
-            constructed for all generations.
-
-    ** D    (Default get_D). A method for calculating distances.
-            It should share the same interface as get_D
-
-    further key-word arguments are passed along to get_Virual_Migrant_Pool
-
-    Returns a Dd numpy array
+    :param Y:
+        A numpy array as returned by makeNParray
+    :param generation:
+        (Default None). If specified, Dd will be constructed
+        for the specific generation(s), else it will be
+        constructed for all generations.
+    :param D:
+        (Default get_D). A method for calculating distances.
+        It should share the same interface as get_D
+    :param **kwargs:
+        Key-word arguments are passed along to get_Virual_Migrant_Pool
+    :return:
+        Dd numpy array
     """
 
     if not hasattr(Y, 'shape'):
@@ -790,22 +818,20 @@ def get_Dd(Y, generation=None, D=get_D, **kwargs):
 def get_normed_M(Y, generation=None, D=get_D, **kwargs):
     """Constructs a normalized M array.
 
-    Arguments:
-
-    ** Y    A numpy array as returned by makeNParray
-
-    ** generation
-            (Default None). If specified, M will be constructed
-            for the specific generation(s), else it will be
-            constructed for all generations.
-
-    ** D    (Default get_D). A method for calculating distances
-            for get_Dd to use.
-            It should share the same interface as get_D.
-
-    Further arguments are passed along to get_Dd
-
-    Returns a normalized M array
+    :param Y:
+        A numpy array as returned by makeNParray
+    :param generation:
+        (Default None). If specified, M will be constructed
+        for the specific generation(s), else it will be
+        constructed for all generations.
+    :param D:
+        (Default get_D). A method for calculating distances
+        for get_Dd to use.
+        It should share the same interface as get_D.
+    :param **kwargs:
+        Further arguments are passed along to get_Dd
+    :return:
+        A normalized M array
     """
     D = np.array(get_Dd(Y, generation=generation,
                         D=D, **kwargs))
@@ -826,7 +852,16 @@ def get_normed_M(Y, generation=None, D=get_D, **kwargs):
 
 def _getSimulationStep(generations, simulationStep=None):
     """Returning a suggested simulation step if non was
-    specified"""
+    specified
+
+    :param generations:
+        The number of generations being run
+    :param simulationStep:
+        If not None, this will be the step size, overriding the step
+        size calibration
+    :return:
+        Step size
+    """
 
     if simulationStep is None:
         if generations <= 200:
@@ -843,12 +878,12 @@ def _myOUT(pop, param):
     """Method responsible at recording the current state of the
     population at each simulation step
 
-    Arguments:
-
-    ** pop  The simuPOP simulation
-
-    ** param
-            The number of loci
+    :param pop:
+        The simuPOP simulation
+    :param param:
+        The number of loci
+    :return:
+        True
     """
     nLoci = param
     #nLoci = len(pop.lociPos())
@@ -881,73 +916,61 @@ def simuMigration(subPopSizes, migrationMatrix, generations, nAlleles,
 
     The simulation is run as a diploid, sexually randoom mating  species.
 
-    Arguments:
-
-    ** subPopSizes
-            If a scalar, all subpopulations will have equal starting
-            size. The number of subpopulations will be determined from
-            the shape of the migrationMatrix.
-            If a list or tuple, the subpopulations and sized will be
-            set from the values in the tuple.
-
-    ** migrationMatrix
-            A square numpy array of migration frequencies.
-            Postions i,j signifies migration from i to j.
-
-    ** generations
-            Number of generations with migration
-
-    ** nAlleles
-            The number of potential alleles at each loci.
-
-    ** mutationRates
-            A scalar determining mutation rates.
-
-    ** simulationStep
-            (Default None). If supplied, this will be the step
-            length for the simulation. Else step length will
-            be determined by _getSimulationStep and depend on
-            the number of generations.
-
-    ** pre_migration_generations
-            (Default 0). If set to positive value, an initial
-            phase of evolution without migration will be invoked
-            for the number of generations specified. This does
-            not affect the number of generations with migration.
-            Also note that the pre migration generations will be
-            part of the output data.
-
-    ** loci (Default [1]) The number of loci per chromosome as
-            a list.
-            Example one chromosome, 8 loci:
-                loci=[8]
-            Example two chromosomes with 2 and 3 loci respectively:
-                loci=[2, 3]
-
-    ** stable_pop_sizes
-            (Default True). If true, mating is done such that the
-            next generation has the same number as the initial
-            generation.
-            If false, each parent pair produces two offsprings
-            and sizes of the populations will drift due to migration.
-
-    ** microsats
-            (Default True). If true, the StepwiseMutator is invoked
-            which emulates microsatelites. That is, allele #9 may
-            only mutate to #8 or #10.
-            If false KAlleleMutator is invoked and an allele may
-            mutate into any other allele.
-
-    ** fpath
-            (default None). If not supplied, then the modules
-            FH-object is assumed to be a file pointer and used
-            to output simulation data.
-            If a Fake_File instance, this will be used to output
-            simulation data.
-            If a string, a new file pointer will be created
-            overwriting any data at the fpath without warnning.
-
-    Returns a simuPOP Population as it is after the simulation.
+    :param subPopSizes:
+        If a scalar, all subpopulations will have equal starting
+        size. The number of subpopulations will be determined from
+        the shape of the migrationMatrix.
+        If a list or tuple, the subpopulations and sized will be
+        set from the values in the tuple.
+    :param migrationMatrix:
+        A square numpy array of migration frequencies.
+        Postions i,j signifies migration from i to j.
+    :param generations:
+        Number of generations with migration
+    :param nAlleles:
+        The number of potential alleles at each loci.
+    :param mutationRates:
+        A scalar determining mutation rates.
+    :param simulationStep:
+        (Default None). If supplied, this will be the step
+        length for the simulation. Else step length will
+        be determined by _getSimulationStep and depend on
+        the number of generations.
+    :param pre_migration_generations:
+        (Default 0). If set to positive value, an initial
+        phase of evolution without migration will be invoked
+        for the number of generations specified. This does
+        not affect the number of generations with migration.
+        Also note that the pre migration generations will be
+        part of the output data.
+    :param loci
+        (Default [1]) The number of loci per chromosome as a list.
+        Example one chromosome, 8 loci:
+            loci=[8]
+        Example two chromosomes with 2 and 3 loci respectively:
+            loci=[2, 3]
+    :param stable_pop_sizes:
+        (Default True). If true, mating is done such that the
+        next generation has the same number as the initial
+        generation.
+        If false, each parent pair produces two offsprings
+        and sizes of the populations will drift due to migration.
+    :param microsats:
+        (Default True). If true, the StepwiseMutator is invoked
+        which emulates microsatelites. That is, allele #9 may
+        only mutate to #8 or #10.
+        If false KAlleleMutator is invoked and an allele may
+        mutate into any other allele.
+    :param fpath:
+        (default None). If not supplied, then the modules
+        FH-object is assumed to be a file pointer and used
+        to output simulation data.
+        If a Fake_File instance, this will be used to output
+        simulation data.
+        If a string, a new file pointer will be created
+        overwriting any data at the fpath without warnning.
+    :return:
+        simuPOP Population as it is after the simulation.
     """
     sTime = time.time()
     if fpath:
@@ -1050,16 +1073,18 @@ def runMultiRunStoreFinalMig(nSimulations, evalF=get_Dd, **kwargs):
     """Helper function to repeat the same simulation and extract
     final migration pattern at last generation.
 
-    Arguments:
-
-    ** nSimulations
-            Integer determining the number of repeats
-
-    Further arguments and keyword arguments are passed along
-    to simuMigration, some of these such as 'fpath' and
-    'nAlleles' are used by evalSimuSettings as well.
-
-    Returns a list of pearson correlation r's for each iteration
+    :param nSimulations:
+        Integer determining the number of repeats
+    :param evalF:
+        The funcion to evaluate the allel frequencies of the last
+        generation.
+    :param **kwargs:
+        Further arguments and keyword arguments are passed along
+        to simuMigration, some of these such as 'fpath' and
+        'nAlleles' are used by evalSimuSettings as well.
+    :return:
+        The result of the evalF-method such that the experiment
+        iterations are on the last axis.
     """
     if not 'fpath' in kwargs:
         print "Don't know where you are saving, cant do anything"
@@ -1090,16 +1115,14 @@ def evalSimuSettings(nSimulations, *args, **kwargs):
     """Helper function to repeat the same simulation and extract
     correlation between the observed and expected migration.
 
-    Arguments:
-
-    ** nSimulations
-            Integer determining the number of repeats
-
-    Further arguments and keyword arguments are passed along
-    to simuMigration, some of these such as 'fpath' and
-    'nAlleles' are used by evalSimuSettings as well.
-
-    Returns a list of pearson correlation r's for each iteration
+    :param nSimulations:
+        Integer determining the number of repeats
+    :param *args / **kwargs:
+        Further arguments and keyword arguments are passed along
+        to simuMigration, some of these such as 'fpath' and
+        'nAlleles' are used by evalSimuSettings as well.
+    :return:
+        A list of pearson correlation r's for each iteration
     """
     if not 'fpath' in kwargs:
         print "Don't know where you are saving, cant do anything"
@@ -1142,23 +1165,24 @@ def metaEvalSimu(iterations=1000, fpath='pop.data'):
     A numpy-array of the pearson values for each simulation is
     saved out as well as a histogram for each settings combination.
 
-    Arguments:
+    :param iterations:
+        (Default 1000). The number of iterations for each
+        simulation.
 
-    ** iterations
-            (Default 1000). The number of iterations for each
-            simulation.
-
-    ** fpath
-            (Default 'pop.data'). Where data will be stored throughout
-            the meta-evaluation.
+    :param fpath:
+        (Default 'pop.data'). Where data will be stored throughout
+        the meta-evaluation.
     """
+
     global migrationMatrix
     global migrationMatrix2
+
     """
     constant_kwargs = {'mutationRates': 0.0001, 'simulationStep': 1,
                        'pre_migration_generations': 500,
                        'fpath': fpath}
     """
+
     def makeHist(pstats, i, title, fpath, iterations):
         """Method outputs the data as npy file and histogram svg"""
         P = np.array(pstats)
