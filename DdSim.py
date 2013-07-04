@@ -164,8 +164,6 @@ def writeMigrate(fpath, pop):
     """Writes the simulated results (Y) for one generation in
     migrate-n compatible format.
 
-    NOTE: This only currently works for one locus simulations.
-
     :param fpath:
         Path to output-file. If file exists at path it
         will be overwritten without promptin question
@@ -425,7 +423,7 @@ def plotDd(X, Y):
     return fig
 
 
-def plotHistograms(data, startPos=0, bins=10, label="{0} -> {1}",
+def plotHistograms(data, startPos=0, bins=20, binRange=(0, 1), label="{0} -> {1}",
                    smooth=False, subplots=True):
     """
     Plots a composite graph of superimposed histograms.
@@ -438,9 +436,9 @@ def plotHistograms(data, startPos=0, bins=10, label="{0} -> {1}",
         The index of the thrid dimension for where to start presenting
         the data.
     :param bins:
-        A bins argument to Numpy.histogram, either an int for the number
-        of bins for each series, a tuple for the bounds or a list of
-        specific bin boundries. See Numpy.histogram for more info.
+        A bins argument to Numpy.histogram, default is 20.
+    :param binRange:
+        Set a specific range for the bins, default is 0 - 1
     :param label:
         A string pattern to put as legend label. \{0\} will be replaced
         with a source integer starting at 1, and \{1\} target int.
@@ -491,7 +489,8 @@ def plotHistograms(data, startPos=0, bins=10, label="{0} -> {1}",
 
             if source != target:
                 tmpD = data[source, target, :]
-                Y, X = np.histogram(tmpD[np.isfinite(tmpD)])
+                Y, X = np.histogram(tmpD[np.isfinite(tmpD)], bins=bins,
+                                    range=binRange)
                 XX.append(X)
                 YY.append(Y)
                 Labels.append(label.format(source + 1, target + 1))
@@ -1106,9 +1105,10 @@ def runMultiRunStoreFinalMig(nSimulations, evalF=get_Dd, **kwargs):
         print "DONE WITH", i
 
     D = np.array(data)
-    D = D.ravel().reshape(D.shape[1:] + (D.shape[0], ), order='F')
+    D2 = np.rollaxis(np.rollaxis(D, 2), 2)
+    #D = D.ravel().reshape(D.shape[1:] + (D.shape[0], ), order='F')
 
-    return D
+    return D2
 
 
 def evalSimuSettings(nSimulations, *args, **kwargs):
