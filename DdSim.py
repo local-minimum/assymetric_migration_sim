@@ -806,10 +806,14 @@ def get_Dd(Y, generation=None, D=get_D, **kwargs):
                 pool = get_Virual_Migrant_Pool(
                     Y, pop1, pop2, generation=generation, **kwargs)
 
-                data[pop1][pop2] = _hmean(D(Y, pop1, pool,
-                                          generation=generation))
-                data[pop2][pop1] = _hmean(D(Y, pop2, pool,
-                                          generation=generation))
+                if pool.sum() == 0:
+                    data[pop1][pop2] = 1
+                    data[pop2][pop1] = 1
+                else:
+                    data[pop1][pop2] = _hmean(D(Y, pop1, pool,
+                                                generation=generation))
+                    data[pop2][pop1] = _hmean(D(Y, pop2, pool,
+                                                generation=generation))
 
     return data
 
