@@ -529,6 +529,7 @@ def plotHistograms(data, startPos=0, bins=20, binRange=(0, 1), label="{0} -> {1}
         ax.set_ylim(0, maxY)
         cl = plt.getp(ax, 'xmajorticklabels')
         plt.setp(cl, fontsize='x-small')
+        ax.set_xlabel("Dd")
 
     fig.tight_layout()
 
@@ -806,7 +807,7 @@ def get_Dd(Y, generation=None, D=get_D, **kwargs):
                 pool = get_Virual_Migrant_Pool(
                     Y, pop1, pop2, generation=generation, **kwargs)
 
-                if pool.sum() == 0:
+                if np.isnan(pool.sum()) or pool.sum() == 0:
                     data[pop1][pop2] = 1
                     data[pop2][pop1] = 1
                 else:
