@@ -16,8 +16,10 @@ __status__ = "Development"
 #SIMULATION
 try:
     import simuPOP
+    from simuPOP.sampling import drawRandomSample
+    ALLOW_SIMUPOP = True
 except:
-    print "WARNING: No simulation can be run until simuPOP is installed"
+    ALLOW_SIMUPOP = False
 
 #PLOTTING
 #import matplotlib
@@ -50,6 +52,13 @@ plt.ion()
 # string in the fpath to replace the filepointer.
 
 FH = None
+
+#
+#       SAMPLING GLOBALS
+#
+
+FH_SAMPLING = None
+SAMPLING_SIZES = None
 
 
 class Fake_File(object):
@@ -891,8 +900,24 @@ def _myOUT(pop, param):
     """
     nLoci = param
     #nLoci = len(pop.lociPos())
-    d = [pop.dvars().gen, pop.subPopSizes()]
 
+    if SAMPLING_SIZES is not None:
+        samplePop = drawRandomSample(pop, SAMPLING_SIZES)
+        d = [pop.dvars().gen, samplePop.subPopSizes()]
+        for sp in range(len(d[-1])):
+            subPop = {}
+            for locus in range(nLoci):
+                simuPOP.stat(samplePop, alleleFreq=locus,
+                             vars=['alleleFreq_sp'])
+                sd = samplePop.dvars(sp).alleleFreq
+                k = sd.keys()[0]
+                subPop[k] = sd[k]
+
+            d.append(subPop)
+
+        FH_SAMPLING.write("{0}\n".format(d))
+
+    d = [pop.dvars().gen, pop.subPopSizes()]
     for sp in range(len(d[-1])):
         subPop = {}
         for locus in range(nLoci):
@@ -911,7 +936,8 @@ def _myOUT(pop, param):
 def simuMigration(subPopSizes, migrationMatrix, generations, nAlleles,
                   mutationRates, simulationStep=None,
                   pre_migration_generations=0, loci=[1],
-                  stable_pop_sizes=True, microsats=True, fpath=None):
+                  stable_pop_sizes=True, microsats=True, fpath=None,
+                  subSampling=None):
     """Simulate the change of allele frequencies among subpopulations
     as a result of migration.
 
@@ -973,16 +999,34 @@ def simuMigration(subPopSizes, migrationMatrix, generations, nAlleles,
         simulation data.
         If a string, a new file pointer will be created
         overwriting any data at the fpath without warnning.
+    :param subSampling:
+        (default None). If supplied, for each population at each
+        generation a sample will be drawn as specified by the
+        parameter (as list or tuple) and written into a
+        separate sample file with similar name as the main file.
     :return:
         simuPOP Population as it is after the simulation.
     """
+    global FH
+    global FH_SAMPLING
+    global SAMPLING_SIZES
+
     sTime = time.time()
     if fpath:
-        global FH
         if isinstance(fpath, Fake_File):
             FH = fpath
         else:
             FH = open(fpath, 'w')
+
+    if subSampling is not None:
+        if isinstance(FH, Fake_File):
+            FH_SAMPLING = Fake_File()
+        else:
+            FH_SAMPLING = open(
+                ".".join(fpath.split(".")[:-1]) + ".sample." +
+                fpath.split(".")[-1], 'w')
+
+    SAMPLING_SIZES = subSampling
 
     #DEAL WITH IMPUT (ALLOW BOTH LIST OF POP-SIZES AS WELL AS
     #SCALAR FOR ALL SUBPOP SIZES
@@ -1068,6 +1112,9 @@ def simuMigration(subPopSizes, migrationMatrix, generations, nAlleles,
 
     if fpath:
         FH.close()
+
+    if subSampling:
+        FH_SAMPLING.close()
 
     print "SIM TOOK", (time.time() - sTime)
     return pop
